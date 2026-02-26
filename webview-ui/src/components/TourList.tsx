@@ -4,25 +4,40 @@ import { VoyaTour } from '../../../src/core/types';
 interface TourListProps {
   tours: VoyaTour[];
   onSelectTour: (tourId: string) => void;
+  onOpenSettings: () => void;
 }
 
-const TourList: React.FC<TourListProps> = ({ tours, onSelectTour }) => {
+const TourList: React.FC<TourListProps> = ({ tours, onSelectTour, onOpenSettings }) => {
   return (
     <div style={styles.container}>
+      {/* Header */}
       <div style={styles.header}>
-        <h2 style={styles.title}>Voya</h2>
+        <div style={styles.headerTop}>
+          <div style={styles.brand}>
+            <h1 style={styles.title}>Voya</h1>
+            <span style={styles.badge}>beta</span>
+          </div>
+          <button style={styles.settingsButton} onClick={onOpenSettings}>
+            Settings
+          </button>
+        </div>
         <p style={styles.subtitle}>Interactive Code Tours</p>
       </div>
 
+      {/* Divider */}
+      <div style={styles.divider} />
+
+      {/* Content */}
       {tours.length === 0 ? (
         <div style={styles.emptyState}>
           <p style={styles.emptyText}>No tours yet</p>
           <p style={styles.emptyHint}>
-            Select some code and use "Voya: Create Tour from Selection" to get started
+            Select code and run "Voya: Create Tour" to get started
           </p>
         </div>
       ) : (
         <div style={styles.tourList}>
+          <div style={styles.sectionLabel}>Your Tours</div>
           {tours.map(tour => (
             <button
               key={tour.id}
@@ -31,7 +46,7 @@ const TourList: React.FC<TourListProps> = ({ tours, onSelectTour }) => {
             >
               <div style={styles.tourTitle}>{tour.title}</div>
               <div style={styles.tourMeta}>
-                {tour.steps.length} steps • {formatDate(tour.createdAt)}
+                {tour.steps.length} steps · {formatDate(tour.createdAt)}
               </div>
             </button>
           ))}
@@ -56,21 +71,56 @@ const styles: Record<string, React.CSSProperties> = {
     height: '100%',
     display: 'flex',
     flexDirection: 'column',
-    padding: '20px'
+    padding: '20px',
+    backgroundColor: 'var(--vscode-editor-background)'
   },
   header: {
-    textAlign: 'center',
-    marginBottom: '30px'
+    marginBottom: '16px'
+  },
+  headerTop: {
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: '4px'
+  },
+  brand: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: '8px'
   },
   title: {
-    fontSize: '28px',
-    fontWeight: 'bold',
-    marginBottom: '8px',
+    fontSize: '20px',
+    fontWeight: '600',
+    margin: 0,
     color: 'var(--vscode-foreground)'
   },
+  badge: {
+    fontSize: '10px',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    padding: '2px 6px',
+    borderRadius: '4px',
+    backgroundColor: 'var(--vscode-badge-background)',
+    color: 'var(--vscode-badge-foreground)'
+  },
+  settingsButton: {
+    background: 'transparent',
+    border: 'none',
+    color: 'var(--vscode-textLink-foreground)',
+    cursor: 'pointer',
+    fontSize: '13px',
+    padding: '4px 8px'
+  },
   subtitle: {
-    fontSize: '14px',
-    color: 'var(--vscode-descriptionForeground)'
+    fontSize: '13px',
+    color: 'var(--vscode-descriptionForeground)',
+    margin: 0
+  },
+  divider: {
+    height: '1px',
+    backgroundColor: 'var(--vscode-widget-border)',
+    marginBottom: '20px'
   },
   emptyState: {
     flex: 1,
@@ -81,33 +131,43 @@ const styles: Record<string, React.CSSProperties> = {
     textAlign: 'center'
   },
   emptyText: {
-    fontSize: '18px',
+    fontSize: '16px',
+    fontWeight: '500',
     color: 'var(--vscode-foreground)',
     marginBottom: '8px'
   },
   emptyHint: {
     fontSize: '13px',
     color: 'var(--vscode-descriptionForeground)',
-    maxWidth: '300px'
+    maxWidth: '280px',
+    lineHeight: '1.5'
+  },
+  sectionLabel: {
+    fontSize: '11px',
+    fontWeight: '500',
+    textTransform: 'uppercase',
+    letterSpacing: '0.5px',
+    color: 'var(--vscode-descriptionForeground)',
+    marginBottom: '12px'
   },
   tourList: {
     display: 'flex',
-    flexDirection: 'column',
-    gap: '12px'
+    flexDirection: 'column'
   },
   tourCard: {
-    background: 'var(--vscode-button-secondaryBackground)',
+    background: 'transparent',
     border: '1px solid var(--vscode-widget-border)',
     borderRadius: '6px',
-    padding: '16px',
+    padding: '14px 16px',
+    marginBottom: '8px',
     cursor: 'pointer',
     textAlign: 'left',
-    transition: 'background 0.2s',
+    transition: 'background-color 0.15s, border-color 0.15s',
     color: 'var(--vscode-foreground)'
   },
   tourTitle: {
-    fontSize: '15px',
-    fontWeight: '600',
+    fontSize: '14px',
+    fontWeight: '500',
     marginBottom: '4px'
   },
   tourMeta: {

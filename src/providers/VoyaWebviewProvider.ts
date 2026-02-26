@@ -105,9 +105,44 @@ export class VoyaWebviewProvider {
           case 'requestDeepen':
             await this.handleDeepenRequest(message.stepIndex, message.targetLevel);
             break;
+
+          case 'getSettings':
+            await this.handleGetSettings();
+            break;
+
+          case 'saveSettings':
+            await this.handleSaveSettings(message.provider, message.apiKey, message.model);
+            break;
         }
       }
     );
+  }
+
+  /**
+   * Get current LLM settings and send to webview
+   */
+  private async handleGetSettings() {
+    const config = vscode.workspace.getConfiguration('voya');
+    this.sendMessage({
+      type: 'settingsLoaded',
+      provider: config.get<string>('llm.provider', 'openai'),
+      apiKey: config.get<string>('llm.apiKey', ''),
+      model: config.get<string>('llm.model', 'gpt-4-turbo-preview')
+    });
+  }
+
+  /**
+   * Save LLM settings from webview
+   */
+  private async handleSaveSettings(provider: string, apiKey: string, model: string) {
+    const config = vscode.workspace.getConfiguration('voya');
+    
+    await config.update('llm.provider', provider, vscode.ConfigurationTarget.Global);
+    await config.update('llm.apiKey', apiKey, vscode.ConfigurationTarget.Global);
+    await config.update('llm.model', model, vscode.ConfigurationTarget.Global);
+    
+    this.sendMessage({ type: 'settingsSaved' });
+    vscode.window.showInformationMessage('Voya settings saved');
   }
 
   /**

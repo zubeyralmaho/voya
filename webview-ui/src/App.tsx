@@ -3,8 +3,12 @@ import { VoyaTour, PlayerState, ExtensionToWebviewMessage, DetailLevel, StepExpl
 import { vscode } from './vscodeApi';
 import Player from './components/Player';
 import TourList from './components/TourList';
+import Settings from './components/Settings';
+
+type ViewState = 'list' | 'settings' | 'player';
 
 const App: React.FC = () => {
+  const [view, setView] = useState<ViewState>('list');
   const [tours, setTours] = useState<VoyaTour[]>([]);
   const [playerState, setPlayerState] = useState<PlayerState>({
     activeTourId: null,
@@ -89,6 +93,7 @@ const App: React.FC = () => {
 
   const handleSelectTour = (tourId: string) => {
     vscode.postMessage({ type: 'loadTour', tourId });
+    setView('player');
   };
 
   const handlePlay = () => vscode.postMessage({ type: 'play' });
@@ -135,32 +140,45 @@ const App: React.FC = () => {
     return step.content.explanation;
   };
 
-  if (!activeTour) {
+  if (view === 'settings') {
     return (
-      <TourList 
-        tours={tours} 
-        onSelectTour={handleSelectTour} 
+      <Settings 
+        onBack={() => setView('list')}
+        vscode={vscode}
+      />
+    );
+  }
+
+  if (view === 'player' && activeTour) {
+    return (
+      <Player
+        tour={activeTour}
+        currentStepIndex={playerState.currentStepIndex}
+        isPlaying={playerState.isPlaying}
+        playbackSpeed={playerState.playbackSpeed}
+        detailLevel={playerState.preferences.detailLevel}
+        isLoadingDeepen={playerState.isLoadingDeepen}
+        currentExplanation={getCurrentExplanation()}
+        onPlay={handlePlay}
+        onPause={handlePause}
+        onNext={handleNext}
+        onPrev={handlePrev}
+        onGoToStep={handleGoToStep}
+        onBack={() => {
+          setActiveTour(null);
+          setView('list');
+        }}
+        onDetailLevelChange={handleDetailLevelChange}
+        onRequestDeepen={handleRequestDeepen}
       />
     );
   }
 
   return (
-    <Player
-      tour={activeTour}
-      currentStepIndex={playerState.currentStepIndex}
-      isPlaying={playerState.isPlaying}
-      playbackSpeed={playerState.playbackSpeed}
-      detailLevel={playerState.preferences.detailLevel}
-      isLoadingDeepen={playerState.isLoadingDeepen}
-      currentExplanation={getCurrentExplanation()}
-      onPlay={handlePlay}
-      onPause={handlePause}
-      onNext={handleNext}
-      onPrev={handlePrev}
-      onGoToStep={handleGoToStep}
-      onBack={() => setActiveTour(null)}
-      onDetailLevelChange={handleDetailLevelChange}
-      onRequestDeepen={handleRequestDeepen}
+    <TourList 
+      tours={tours} 
+      onSelectTour={handleSelectTour}
+      onOpenSettings={() => setView('settings')}
     />
   );
 };

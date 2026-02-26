@@ -93,6 +93,8 @@ export type ExtensionToWebviewMessage =
   | { type: 'playbackStateChanged'; isPlaying: boolean }
   | { type: 'deepenStarted'; stepIndex: number }
   | { type: 'deepenComplete'; stepIndex: number; detailLevel: DetailLevel; explanation: string }
+  | { type: 'settingsLoaded'; provider: string; apiKey: string; model: string }
+  | { type: 'settingsSaved' }
   | { type: 'error'; message: string };
 
 /**
@@ -109,4 +111,6 @@ export type WebviewToExtensionMessage =
   | { type: 'setPlaybackSpeed'; speed: number }
   | { type: 'setDetailLevel'; level: DetailLevel }
   | { type: 'requestDeepen'; stepIndex: number; targetLevel: DetailLevel }
-  | { type: 'createTourFromSelection' };
+  | { type: 'createTourFromSelection' }
+  | { type: 'getSettings' }
+  | { type: 'saveSettings'; provider: string; apiKey: string; model: string };
