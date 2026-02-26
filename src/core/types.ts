@@ -95,6 +95,10 @@ export type ExtensionToWebviewMessage =
   | { type: 'deepenComplete'; stepIndex: number; detailLevel: DetailLevel; explanation: string }
   | { type: 'settingsLoaded'; provider: string; apiKey: string; model: string }
   | { type: 'settingsSaved' }
+  | { type: 'journalUpdate'; journal: CodeJournal }
+  | { type: 'changeDetected'; change: TrackedChange }
+  | { type: 'changeExplained'; changeId: string; explanation: string }
+  | { type: 'trackingStateChanged'; isTracking: boolean }
   | { type: 'error'; message: string };
 
 /**
@@ -113,4 +117,42 @@ export type WebviewToExtensionMessage =
   | { type: 'requestDeepen'; stepIndex: number; targetLevel: DetailLevel }
   | { type: 'createTourFromSelection' }
   | { type: 'getSettings' }
-  | { type: 'saveSettings'; provider: string; apiKey: string; model: string };
+  | { type: 'saveSettings'; provider: string; apiKey: string; model: string }
+  | { type: 'startTracking' }
+  | { type: 'stopTracking' }
+  | { type: 'getJournal' }
+  | { type: 'explainChange'; changeId: string }
+  | { type: 'explainAllPending' }
+  | { type: 'clearJournal' }
+  | { type: 'goToChange'; changeId: string };
+
+/**
+ * Tracked code change
+ */
+export interface TrackedChange {
+  id: string;
+  timestamp: string;
+  filePath: string;
+  changeType: 'added' | 'modified' | 'deleted';
+  range: {
+    startLine: number;
+    endLine: number;
+  };
+  code: string;
+  explanation?: string;
+  status: 'pending' | 'explaining' | 'explained' | 'error';
+  source?: 'manual' | 'agent' | 'auto';
+}
+
+/**
+ * Code Journal - session of tracked changes
+ */
+export interface CodeJournal {
+  id: string;
+  sessionStart: string;
+  sessionEnd?: string;
+  title?: string;
+  changes: TrackedChange[];
+  summary?: string;
+  isTracking: boolean;
+}

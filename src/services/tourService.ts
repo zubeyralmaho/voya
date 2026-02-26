@@ -2,6 +2,7 @@ import * as vscode from 'vscode';
 import * as path from 'path';
 import { VoyaTour, VoyaStep, DetailLevel } from '../core/types';
 import { llmService } from './llmService';
+import { contextService, CodeContext } from './contextService';
 
 export class TourService {
   private readonly voyaDir = '.voya';
@@ -9,13 +10,11 @@ export class TourService {
   constructor(private readonly context: vscode.ExtensionContext) {}
 
   /**
-   * Create a tour using LLM-powered analysis
+   * Create a tour using LLM-powered analysis with rich context
    */
   async createTour(
-    filePath: string,
-    selectedText: string,
-    startLine: number,
-    endLine: number,
+    document: vscode.TextDocument,
+    selection: vscode.Selection,
     onProgress?: (message: string) => void
   ): Promise<VoyaTour> {
     const tourId = this.generateId();
@@ -23,16 +22,37 @@ export class TourService {
     const detailLevel = config.get<DetailLevel>('defaultDetailLevel', 'general');
     const language = config.get<string>('language', 'en');
 
-    onProgress?.('Analyzing code structure...');
+    const filePath = this.getRelativePath(document.uri);
+    const selectedText = document.getText(selection);
+    const startLine = selection.start.line + 1;
+    const endLine = selection.end.line + 1;
 
-    // Generate tour steps using LLM
+    onProgress?.('Gathering context...');
+
+    // Build rich context for the selection
+    let codeContext: CodeContext | undefined;
+    try {
+      codeContext = await contextService.buildContext(document, selection);
+    } catch (error) {
+      console.warn('Failed to build context:', error);
+    }
+
+    onProgress?.('Analyzing code with AI...');
+
+    // Format context for LLM prompt
+    const additionalContext = codeContext 
+      ? contextService.formatForPrompt(codeContext)
+      : undefined;
+
+    // Generate tour steps using LLM with context
     const generatedSteps = await llmService.generateTour({
       code: selectedText,
       filePath,
       startLine,
       endLine,
       detailLevel,
-      outputLanguage: language
+      outputLanguage: language,
+      additionalContext
     });
 
     onProgress?.('Creating tour steps...');
@@ -42,14 +62,14 @@ export class TourService {
       stepIndex: index,
       filePath,
       range: {
-        startLine: step.startLine,
-        endLine: step.endLine
+        startLine: startLine + step.startLine - 1,
+        endLine: startLine + step.endLine - 1
       },
       content: {
         summary: step.summary,
         explanation: step.explanation
       },
-      codeSnippet: this.extractCodeSnippet(selectedText, step.startLine - startLine, step.endLine - startLine)
+      codeSnippet: this.extractCodeSnippet(selectedText, step.startLine - 1, step.endLine - 1)
     }));
 
     // Generate tour title using LLM or fallback
@@ -75,11 +95,82 @@ export class TourService {
   }
 
   /**
+   * Legacy method for backward compatibility
+   */
+  async createTourFromText(
+    filePath: string,
+    selectedText: string,
+    startLine: number,
+    endLine: number,
+    onProgress?: (message: string) => void
+  ): Promise<VoyaTour> {
+    const config = vscode.workspace.getConfiguration('voya');
+    const detailLevel = config.get<DetailLevel>('defaultDetailLevel', 'general');
+    const language = config.get<string>('language', 'en');
+
+    onProgress?.('Analyzing code structure...');
+
+    const generatedSteps = await llmService.generateTour({
+      code: selectedText,
+      filePath,
+      startLine,
+      endLine,
+      detailLevel,
+      outputLanguage: language
+    });
+
+    onProgress?.('Creating tour steps...');
+
+    const steps: VoyaStep[] = generatedSteps.map((step, index) => ({
+      stepIndex: index,
+      filePath,
+      range: {
+        startLine: startLine + step.startLine - 1,
+        endLine: startLine + step.endLine - 1
+      },
+      content: {
+        summary: step.summary,
+        explanation: step.explanation
+      },
+      codeSnippet: this.extractCodeSnippet(selectedText, step.startLine - 1, step.endLine - 1)
+    }));
+
+    const title = await this.generateTourTitle(filePath, selectedText);
+
+    const tour: VoyaTour = {
+      id: this.generateId(),
+      title,
+      createdAt: new Date().toISOString(),
+      sourceContext: {
+        repository: await this.getRepoName(),
+        branch: await this.getBranchName()
+      },
+      steps
+    };
+
+    onProgress?.('Saving tour...');
+    await this.saveTour(tour);
+
+    return tour;
+  }
+
+  /**
    * Extract code snippet for a step
    */
   private extractCodeSnippet(fullCode: string, relativeStart: number, relativeEnd: number): string {
     const lines = fullCode.split('\n');
     return lines.slice(relativeStart, relativeEnd + 1).join('\n');
+  }
+
+  /**
+   * Get workspace-relative path
+   */
+  private getRelativePath(uri: vscode.Uri): string {
+    const workspaceFolder = vscode.workspace.getWorkspaceFolder(uri);
+    if (workspaceFolder) {
+      return path.relative(workspaceFolder.uri.fsPath, uri.fsPath);
+    }
+    return uri.fsPath;
   }
 
   /**

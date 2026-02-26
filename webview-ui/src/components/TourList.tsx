@@ -5,9 +5,10 @@ interface TourListProps {
   tours: VoyaTour[];
   onSelectTour: (tourId: string) => void;
   onOpenSettings: () => void;
+  onOpenJournal: () => void;
 }
 
-const TourList: React.FC<TourListProps> = ({ tours, onSelectTour, onOpenSettings }) => {
+const TourList: React.FC<TourListProps> = ({ tours, onSelectTour, onOpenSettings, onOpenJournal }) => {
   return (
     <div style={styles.container}>
       {/* Header */}
@@ -17,9 +18,14 @@ const TourList: React.FC<TourListProps> = ({ tours, onSelectTour, onOpenSettings
             <h1 style={styles.title}>Voya</h1>
             <span style={styles.badge}>beta</span>
           </div>
-          <button style={styles.settingsButton} onClick={onOpenSettings}>
-            Settings
-          </button>
+          <div style={styles.headerActions}>
+            <button style={styles.headerButton} onClick={onOpenJournal}>
+              Journal
+            </button>
+            <button style={styles.headerButton} onClick={onOpenSettings}>
+              Settings
+            </button>
+          </div>
         </div>
         <p style={styles.subtitle}>Interactive Code Tours</p>
       </div>
@@ -104,7 +110,11 @@ const styles: Record<string, React.CSSProperties> = {
     backgroundColor: 'var(--vscode-badge-background)',
     color: 'var(--vscode-badge-foreground)'
   },
-  settingsButton: {
+  headerActions: {
+    display: 'flex',
+    gap: '8px'
+  },
+  headerButton: {
     background: 'transparent',
     border: 'none',
     color: 'var(--vscode-textLink-foreground)',

@@ -108,6 +108,7 @@ export interface TourGenerationRequest {
   endLine: number;
   detailLevel: DetailLevel;
   outputLanguage?: string;
+  additionalContext?: string;
 }
 
 export interface GeneratedStep {
@@ -205,6 +206,10 @@ ${request.code}
       return this.generateStubSteps(request);
     }
 
+    const contextSection = request.additionalContext 
+      ? `\n\nUse this additional context to provide better explanations:\n${request.additionalContext}`
+      : '';
+
     const system = `You are a code tour generator. Your task is to analyze code and break it down into logical, sequential steps for a guided walkthrough.
 
 For the given code, identify 2-6 logical sections that should be explained separately. Each section should represent a coherent unit of functionality.
@@ -226,7 +231,9 @@ Guidelines:
 - Each step should cover a logical unit (function, class, block, etc.)
 - Summaries should be concise and action-oriented
 - Explanations should be suitable for a teleprompter-style reading
-- Steps should flow naturally from one to the next${LANGUAGE_INSTRUCTIONS[request.outputLanguage || config.language] || ''}`;
+- Steps should flow naturally from one to the next
+- Use the provided context about imports, dependencies, and related code to enrich explanations
+- Mention how this code relates to other parts of the codebase when relevant${LANGUAGE_INSTRUCTIONS[request.outputLanguage || config.language] || ''}`;
 
     const user = `Analyze this code and generate tour steps:
 
@@ -234,7 +241,7 @@ File: ${request.filePath} (lines ${request.startLine}-${request.endLine})
 
 \`\`\`
 ${request.code}
-\`\`\``;
+\`\`\`${contextSection}`;
 
     try {
       let response: LLMResponse;

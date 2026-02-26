@@ -1,7 +1,8 @@
 import * as vscode from 'vscode';
-import { VoyaTour, WebviewToExtensionMessage, ExtensionToWebviewMessage, VoyaStep, DetailLevel } from '../core/types';
+import { VoyaTour, WebviewToExtensionMessage, ExtensionToWebviewMessage, VoyaStep, DetailLevel, CodeJournal, TrackedChange } from '../core/types';
 import { TourService } from '../services/tourService';
 import { llmService } from '../services/llmService';
+import { getChangeTracker, ChangeTrackerService, CodeChange } from '../services/changeTrackerService';
 
 export class VoyaWebviewProvider {
   public static readonly viewType = 'voya.player';
@@ -10,6 +11,7 @@ export class VoyaWebviewProvider {
   private currentTour: VoyaTour | null = null;
   private currentStepIndex = 0;
   private highlightDecoration: vscode.TextEditorDecorationType;
+  private changeTracker: ChangeTrackerService;
 
   constructor(
     private readonly context: vscode.ExtensionContext,
@@ -18,6 +20,17 @@ export class VoyaWebviewProvider {
     this.highlightDecoration = vscode.window.createTextEditorDecorationType({
       backgroundColor: new vscode.ThemeColor('editor.findMatchHighlightBackground'),
       isWholeLine: true
+    });
+    
+    // Initialize change tracker
+    this.changeTracker = getChangeTracker(context);
+    
+    // Subscribe to change events
+    this.changeTracker.onChangeDetected((change) => {
+      this.sendMessage({
+        type: 'changeDetected',
+        change: this.convertToTrackedChange(change)
+      });
     });
   }
 
@@ -113,6 +126,40 @@ export class VoyaWebviewProvider {
           case 'saveSettings':
             await this.handleSaveSettings(message.provider, message.apiKey, message.model);
             break;
+
+          // Journal/Tracking messages
+          case 'startTracking':
+            this.changeTracker.startTracking();
+            this.sendMessage({ type: 'trackingStateChanged', isTracking: true });
+            this.sendJournalUpdate();
+            break;
+
+          case 'stopTracking':
+            this.changeTracker.stopTracking();
+            this.sendMessage({ type: 'trackingStateChanged', isTracking: false });
+            this.sendJournalUpdate();
+            break;
+
+          case 'getJournal':
+            this.sendJournalUpdate();
+            break;
+
+          case 'explainChange':
+            await this.handleExplainChange(message.changeId);
+            break;
+
+          case 'explainAllPending':
+            await this.handleExplainAllPending();
+            break;
+
+          case 'clearJournal':
+            this.changeTracker.clear();
+            this.sendJournalUpdate();
+            break;
+
+          case 'goToChange':
+            await this.handleGoToChange(message.changeId);
+            break;
         }
       }
     );
@@ -143,6 +190,111 @@ export class VoyaWebviewProvider {
     
     this.sendMessage({ type: 'settingsSaved' });
     vscode.window.showInformationMessage('Voya settings saved');
+  }
+
+  /**
+   * Send current journal state to webview
+   */
+  private sendJournalUpdate() {
+    const internalJournal = this.changeTracker.getCurrentJournal();
+    const journal: CodeJournal = {
+      id: internalJournal?.id || '',
+      sessionStart: internalJournal?.sessionStart || new Date().toISOString(),
+      sessionEnd: internalJournal?.sessionEnd,
+      title: internalJournal?.title,
+      changes: this.changeTracker.getChanges().map(c => this.convertToTrackedChange(c)),
+      summary: internalJournal?.summary,
+      isTracking: !!internalJournal && !internalJournal.sessionEnd
+    };
+    this.sendMessage({ type: 'journalUpdate', journal });
+  }
+
+  /**
+   * Convert internal CodeChange to TrackedChange for webview
+   */
+  private convertToTrackedChange(change: CodeChange): TrackedChange {
+    return {
+      id: change.id,
+      timestamp: change.timestamp,
+      filePath: change.filePath,
+      changeType: change.changeType,
+      range: change.range,
+      code: change.code,
+      explanation: change.explanation,
+      status: change.status,
+      source: change.source
+    };
+  }
+
+  /**
+   * Handle explain change request
+   */
+  private async handleExplainChange(changeId: string) {
+    await this.changeTracker.explainChange(changeId);
+    
+    // Send the updated change
+    const changes = this.changeTracker.getChanges();
+    const change = changes.find(c => c.id === changeId);
+    if (change && change.explanation) {
+      this.sendMessage({
+        type: 'changeExplained',
+        changeId,
+        explanation: change.explanation
+      });
+    }
+    
+    this.sendJournalUpdate();
+  }
+
+  /**
+   * Handle explain all pending changes
+   */
+  private async handleExplainAllPending() {
+    const changes = this.changeTracker.getChanges();
+    const pending = changes.filter(c => c.status === 'pending');
+    
+    for (const change of pending) {
+      await this.changeTracker.explainChange(change.id);
+      
+      // Send update after each explanation
+      if (change.explanation) {
+        this.sendMessage({
+          type: 'changeExplained',
+          changeId: change.id,
+          explanation: change.explanation
+        });
+      }
+    }
+    
+    this.sendJournalUpdate();
+  }
+
+  /**
+   * Navigate to a specific change in the editor
+   */
+  private async handleGoToChange(changeId: string) {
+    const changes = this.changeTracker.getChanges();
+    const change = changes.find(c => c.id === changeId);
+    if (!change) return;
+
+    const workspaceFolders = vscode.workspace.workspaceFolders;
+    if (!workspaceFolders) return;
+
+    const fileUri = vscode.Uri.joinPath(workspaceFolders[0].uri, change.filePath);
+    
+    try {
+      const document = await vscode.workspace.openTextDocument(fileUri);
+      const editor = await vscode.window.showTextDocument(document, vscode.ViewColumn.One);
+      
+      const startLine = Math.max(0, change.range.startLine - 1);
+      const endLine = Math.max(0, change.range.endLine - 1);
+      const range = new vscode.Range(startLine, 0, endLine, Number.MAX_VALUE);
+      
+      editor.setDecorations(this.highlightDecoration, [range]);
+      editor.revealRange(range, vscode.TextEditorRevealType.InCenter);
+    } catch (error) {
+      console.error('Failed to navigate to change:', error);
+    }
   }
 
   /**

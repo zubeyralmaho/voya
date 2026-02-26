@@ -1,15 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { VoyaTour, PlayerState, ExtensionToWebviewMessage, DetailLevel, StepExplanations } from '../../src/core/types';
+import { VoyaTour, PlayerState, ExtensionToWebviewMessage, DetailLevel, StepExplanations, CodeJournal, TrackedChange } from '../../src/core/types';
 import { vscode } from './vscodeApi';
 import Player from './components/Player';
 import TourList from './components/TourList';
 import Settings from './components/Settings';
+import CodeJournalView from './components/CodeJournalView';
 
-type ViewState = 'list' | 'settings' | 'player';
+type ViewState = 'list' | 'settings' | 'player' | 'journal';
 
 const App: React.FC = () => {
   const [view, setView] = useState<ViewState>('list');
   const [tours, setTours] = useState<VoyaTour[]>([]);
+  const [journal, setJournal] = useState<CodeJournal | null>(null);
+  const [isTracking, setIsTracking] = useState(false);
   const [playerState, setPlayerState] = useState<PlayerState>({
     activeTourId: null,
     currentStepIndex: 0,
@@ -85,6 +88,31 @@ const App: React.FC = () => {
           }));
           console.error('Extension error:', message.message);
           break;
+        
+        // Journal messages
+        case 'journalUpdate':
+          setJournal(message.journal);
+          setIsTracking(message.journal.isTracking);
+          break;
+        case 'changeDetected':
+          setJournal(prev => prev ? {
+            ...prev,
+            changes: [...prev.changes, message.change]
+          } : null);
+          break;
+        case 'changeExplained':
+          setJournal(prev => prev ? {
+            ...prev,
+            changes: prev.changes.map(c => 
+              c.id === message.changeId 
+                ? { ...c, explanation: message.explanation, status: 'explained' as const }
+                : c
+            )
+          } : null);
+          break;
+        case 'trackingStateChanged':
+          setIsTracking(message.isTracking);
+          break;
       }
     });
 
@@ -118,6 +146,14 @@ const App: React.FC = () => {
     });
   };
 
+  // Journal handlers
+  const handleStartTracking = () => vscode.postMessage({ type: 'startTracking' });
+  const handleStopTracking = () => vscode.postMessage({ type: 'stopTracking' });
+  const handleExplainChange = (changeId: string) => vscode.postMessage({ type: 'explainChange', changeId });
+  const handleExplainAll = () => vscode.postMessage({ type: 'explainAllPending' });
+  const handleClearJournal = () => vscode.postMessage({ type: 'clearJournal' });
+  const handleGoToChange = (changeId: string) => vscode.postMessage({ type: 'goToChange', changeId });
+
   // Get the current explanation based on detail level
   const getCurrentExplanation = (): string => {
     if (!activeTour) return '';
@@ -145,6 +181,22 @@ const App: React.FC = () => {
       <Settings 
         onBack={() => setView('list')}
         vscode={vscode}
+      />
+    );
+  }
+
+  if (view === 'journal') {
+    return (
+      <CodeJournalView
+        journal={journal}
+        isTracking={isTracking}
+        onStartTracking={handleStartTracking}
+        onStopTracking={handleStopTracking}
+        onExplainChange={handleExplainChange}
+        onExplainAll={handleExplainAll}
+        onClearJournal={handleClearJournal}
+        onGoToChange={handleGoToChange}
+        onBack={() => setView('list')}
       />
     );
   }
@@ -179,6 +231,10 @@ const App: React.FC = () => {
       tours={tours} 
       onSelectTour={handleSelectTour}
       onOpenSettings={() => setView('settings')}
+      onOpenJournal={() => {
+        vscode.postMessage({ type: 'getJournal' });
+        setView('journal');
+      }}
     />
   );
 };

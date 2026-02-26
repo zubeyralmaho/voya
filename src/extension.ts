@@ -111,9 +111,6 @@ export function activate(context: vscode.ExtensionContext) {
         if (!configure) return;
       }
 
-      const selectedText = editor.document.getText(selection);
-      const filePath = vscode.workspace.asRelativePath(editor.document.uri);
-
       // Create tour with progress indicator
       await vscode.window.withProgress(
         {
@@ -123,13 +120,12 @@ export function activate(context: vscode.ExtensionContext) {
         },
         async (progress) => {
           try {
-            progress.report({ message: 'Analyzing code...' });
+            progress.report({ message: 'Gathering context...' });
 
+            // Use new context-aware tour creation
             const tour = await tourService.createTour(
-              filePath,
-              selectedText,
-              selection.start.line + 1,
-              selection.end.line + 1,
+              editor.document,
+              selection,
               (message: string) => progress.report({ message })
             );
 
