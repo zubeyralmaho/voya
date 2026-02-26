@@ -10,13 +10,12 @@ const TourList: React.FC<TourListProps> = ({ tours, onSelectTour }) => {
   return (
     <div style={styles.container}>
       <div style={styles.header}>
-        <h1 style={styles.title}>🎯 Voya</h1>
+        <h2 style={styles.title}>Voya</h2>
         <p style={styles.subtitle}>Interactive Code Tours</p>
       </div>
 
       {tours.length === 0 ? (
         <div style={styles.emptyState}>
-          <div style={styles.emptyIcon}>📚</div>
           <p style={styles.emptyText}>No tours yet</p>
           <p style={styles.emptyHint}>
             Select some code and use "Voya: Create Tour from Selection" to get started
@@ -80,10 +79,6 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     textAlign: 'center'
-  },
-  emptyIcon: {
-    fontSize: '48px',
-    marginBottom: '16px'
   },
   emptyText: {
     fontSize: '18px',

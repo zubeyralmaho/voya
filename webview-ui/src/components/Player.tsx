@@ -132,7 +132,6 @@ const Player: React.FC<PlayerProps> = ({
           style={styles.detailLevelButton}
           onClick={() => setShowDetailSelector(!showDetailSelector)}
         >
-          <span style={styles.detailLevelIcon}>📊</span>
           {DETAIL_LEVEL_META[detailLevel].label}
           <span style={styles.dropdownArrow}>{showDetailSelector ? '▲' : '▼'}</span>
         </button>
@@ -194,13 +193,12 @@ const Player: React.FC<PlayerProps> = ({
 
       {/* Step Summary */}
       <div style={styles.stepSummary}>
-        <span style={styles.stepIcon}>📍</span>
         {currentStep?.content.summary || 'Loading...'}
       </div>
 
       {/* File Info */}
       <div style={styles.fileInfo}>
-        <span style={styles.fileIcon}>📄</span>
+
         {currentStep?.filePath}
         <span style={styles.lineRange}>
           Lines {currentStep?.range.startLine}-{currentStep?.range.endLine}
@@ -211,7 +209,6 @@ const Player: React.FC<PlayerProps> = ({
       <div style={styles.teleprompterContainer}>
         {isLoadingDeepen && (
           <div style={styles.loadingOverlay}>
-            <div style={styles.loadingSpinner}>⏳</div>
             <div style={styles.loadingText}>Generating deeper analysis...</div>
           </div>
         )}
@@ -236,8 +233,7 @@ const Player: React.FC<PlayerProps> = ({
           style={styles.deepenButton}
           onClick={() => onRequestDeepen(nextDeeperLevel)}
         >
-          <span style={styles.deepenIcon}>🔍</span>
-          Deepen to {DETAIL_LEVEL_META[nextDeeperLevel].label}
+          Deepen
         </button>
       )}
 
@@ -248,14 +244,14 @@ const Player: React.FC<PlayerProps> = ({
           onClick={onPrev}
           disabled={currentStepIndex === 0}
         >
-          ⏮ Prev
+          ‹ Prev
         </button>
         
         <button 
           style={styles.playButton}
           onClick={isPlaying ? onPause : onPlay}
         >
-          {isPlaying ? '⏸ Pause' : '▶ Play'}
+          {isPlaying ? 'Pause' : 'Play'}
         </button>
         
         <button 
@@ -263,7 +259,7 @@ const Player: React.FC<PlayerProps> = ({
           onClick={onNext}
           disabled={currentStepIndex === tour.steps.length - 1}
         >
-          Next ⏭
+          Next ›
         </button>
       </div>
 
@@ -345,9 +341,6 @@ const styles: Record<string, React.CSSProperties> = {
     color: 'var(--vscode-foreground)',
     marginBottom: '8px'
   },
-  stepIcon: {
-    fontSize: '16px'
-  },
   fileInfo: {
     display: 'flex',
     alignItems: 'center',
@@ -358,9 +351,6 @@ const styles: Record<string, React.CSSProperties> = {
     padding: '8px 12px',
     backgroundColor: 'var(--vscode-textBlockQuote-background)',
     borderRadius: '4px'
-  },
-  fileIcon: {
-    fontSize: '14px'
   },
   lineRange: {
     marginLeft: 'auto',
@@ -453,9 +443,6 @@ const styles: Record<string, React.CSSProperties> = {
     cursor: 'pointer',
     fontSize: '13px'
   },
-  detailLevelIcon: {
-    fontSize: '14px'
-  },
   dropdownArrow: {
     marginLeft: 'auto',
     fontSize: '10px',
@@ -499,19 +486,16 @@ const styles: Record<string, React.CSSProperties> = {
     justifyContent: 'center',
     gap: '8px',
     width: '100%',
-    padding: '10px 16px',
+    padding: '8px 16px',
     marginBottom: '12px',
-    background: 'linear-gradient(135deg, var(--vscode-button-secondaryBackground), var(--vscode-button-background))',
-    border: '1px solid var(--vscode-button-border)',
-    borderRadius: '6px',
-    color: 'var(--vscode-button-foreground)',
+    background: 'var(--vscode-button-secondaryBackground)',
+    border: '1px solid var(--vscode-input-border)',
+    borderRadius: '4px',
+    color: 'var(--vscode-button-secondaryForeground)',
     cursor: 'pointer',
-    fontSize: '13px',
+    fontSize: '12px',
     fontWeight: '500',
-    transition: 'transform 0.2s, box-shadow 0.2s'
-  },
-  deepenIcon: {
-    fontSize: '16px'
+    transition: 'opacity 0.2s'
   },
   // Loading Overlay Styles
   loadingOverlay: {
@@ -525,10 +509,6 @@ const styles: Record<string, React.CSSProperties> = {
     alignItems: 'center',
     justifyContent: 'center',
     zIndex: 10
-  },
-  loadingSpinner: {
-    fontSize: '32px',
-    animation: 'pulse 1.5s ease-in-out infinite'
   },
   loadingText: {
     marginTop: '12px',
