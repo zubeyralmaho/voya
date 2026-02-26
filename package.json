@@ -1,0 +1,115 @@
+{
+  "name": "voya",
+  "displayName": "Voya",
+  "description": "AI-powered interactive code tours that transform code into step-by-step visual walkthroughs",
+  "version": "0.1.0",
+  "publisher": "voya",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Education",
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./dist/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "Voya",
+      "properties": {
+        "voya.llm.provider": {
+          "type": "string",
+          "default": "openai",
+          "enum": ["openai", "anthropic"],
+          "enumDescriptions": [
+            "OpenAI GPT models (GPT-4, GPT-4 Turbo)",
+            "Anthropic Claude models (Claude 3)"
+          ],
+          "description": "LLM provider for code analysis"
+        },
+        "voya.llm.apiKey": {
+          "type": "string",
+          "default": "",
+          "description": "API key for the selected LLM provider"
+        },
+        "voya.llm.model": {
+          "type": "string",
+          "default": "gpt-4-turbo-preview",
+          "description": "Model to use for code analysis (e.g., gpt-4-turbo-preview, claude-3-opus-20240229)"
+        },
+        "voya.defaultDetailLevel": {
+          "type": "string",
+          "default": "general",
+          "enum": ["tldr", "general", "detailed", "extreme_detail"],
+          "enumDescriptions": [
+            "TL;DR - One sentence summary",
+            "General - Standard explanation",
+            "Detailed - In-depth analysis",
+            "Extreme Detail - Line-by-line breakdown"
+          ],
+          "description": "Default detail level for generated tours"
+        },
+        "voya.language": {
+          "type": "string",
+          "default": "en",
+          "enum": ["en", "tr", "de", "fr", "es", "zh", "ja", "ko"],
+          "enumDescriptions": [
+            "English",
+            "Türkçe",
+            "Deutsch",
+            "Français",
+            "Español",
+            "中文",
+            "日本語",
+            "한국어"
+          ],
+          "description": "Language for generated explanations"
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "voya.createTour",
+        "title": "Voya: Create Tour from Selection"
+      },
+      {
+        "command": "voya.openPlayer",
+        "title": "Voya: Open Player"
+      },
+      {
+        "command": "voya.setApiKey",
+        "title": "Voya: Set API Key"
+      }
+    ],
+    "menus": {
+      "editor/context": [
+        {
+          "command": "voya.createTour",
+          "when": "editorHasSelection",
+          "group": "voya"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run build",
+    "build": "npm run build:extension && npm run build:webview",
+    "build:extension": "esbuild ./src/extension.ts --bundle --outfile=dist/extension.js --external:vscode --format=cjs --platform=node",
+    "build:webview": "esbuild ./webview-ui/src/index.tsx --bundle --outfile=dist/webview.js --format=iife --loader:.tsx=tsx --loader:.ts=ts",
+    "watch": "npm run build:extension -- --watch",
+    "compile": "tsc -p ./",
+    "lint": "eslint src --ext ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.3.1",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@types/vscode": "^1.109.0",
+    "esbuild": "^0.27.3",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4"
+  }
+}
